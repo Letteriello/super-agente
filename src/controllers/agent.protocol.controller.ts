@@ -27,7 +27,7 @@ export class AgentProtocolController {
                     name: `Agent ${agentId}`,
                     latitude: 0,
                     longitude: 0
-                });
+                } as any); // Cast as any to avoid DeepPartial issues with TypeORM
                 await userRepo.save(agentUser);
             }
 

@@ -19,7 +19,7 @@ async function runSimulation() {
             name: "Tester Silva",
             latitude: -26.76,
             longitude: -48.63
-        });
+        } as any);
         await userRepo.save(user);
     }
     console.log(`👤 Usuário de Teste: ${user.name}`);
