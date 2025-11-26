@@ -22,13 +22,11 @@ export class Request {
     @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
     budget: number;
 
-    @Column({
-        type: "geography",
-        spatialFeatureType: "Point",
-        srid: 4326,
-        nullable: true
-    })
-    location: any;
+    @Column({ nullable: true, type: "float" })
+    latitude: number;
+
+    @Column({ nullable: true, type: "float" })
+    longitude: number;
 
     @Column({ default: "PENDING" })
     status: string;

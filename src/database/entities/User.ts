@@ -11,21 +11,6 @@ export class User {
     @Column({ nullable: true })
     name: string;
 
-    @Index({ spatial: true })
-    @Column({
-        type: "geography",
-        spatialFeatureType: "Point",
-        srid: 4326,
-        nullable: true
-    })
-    location: any; // GeoJSON Point
-
-    @Column({ type: "text", nullable: true })
-    address: string;
-
-    @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
-    rating_sum: number;
-
     @Column({ default: 0 })
     rating_count: number;
 

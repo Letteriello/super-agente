@@ -25,7 +25,8 @@ export class AgentProtocolController {
                 agentUser = userRepo.create({
                     phone: `agent:${agentId}`,
                     name: `Agent ${agentId}`,
-                    location: { type: "Point", coordinates: [0, 0] } // Localização Virtual
+                    latitude: 0,
+                    longitude: 0
                 });
                 await userRepo.save(agentUser);
             }

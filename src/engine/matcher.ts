@@ -26,6 +26,8 @@ export class Matcher {
         const WEIGHT_DISTANCE = 0.3;
         const WEIGHT_REPUTATION = 0.4;
 
+        // Query Raw para buscar candidatos baseados em similaridade semântica
+        // Retornamos também lat/long para calcular distância na aplicação (já que removemos PostGIS)
         const rawQuery = `
             SELECT 
                 o.id as offer_id,
@@ -33,24 +35,21 @@ export class Matcher {
                 u.phone as provider_phone,
                 u.name as provider_name,
                 u.rating_average as provider_rating,
-                1 - (o.embedding <=> $1) as semantic_score, -- Cosine Similarity
-                ST_Distance(u.location, $2) as distance_meters
+                u.latitude as provider_lat,
+                u.longitude as provider_long,
+                1 - (o.embedding <=> $1) as semantic_score
             FROM offers o
             JOIN users u ON o.user_id = u.id
             WHERE 
                 o.active = true 
-                AND o.user_id != $3 -- Não dar match consigo mesmo
+                AND o.user_id != $2 -- Não dar match consigo mesmo
                 AND 1 - (o.embedding <=> $1) > 0.7 -- Mínimo de similaridade semântica
             ORDER BY semantic_score DESC
-            LIMIT 5;
+            LIMIT 10;
         `;
-
-        // TODO: Adicionar filtro de distância no WHERE se location estiver disponível
-        // Por enquanto, vamos simplificar focando na semântica para o MVP
 
         const results = await AppDataSource.query(rawQuery, [
             embeddingString,
-            request.location || request.user.location, // Fallback para location do user
             request.user.id
         ]);
 
@@ -59,10 +58,21 @@ export class Matcher {
 
         for (const res of results) {
             // Calcular Score Final
-            // Normalizar Distância (ex: 0 a 10km -> 1 a 0) - Simplificado aqui
-            const distanceScore = 1; // Placeholder
 
-            // Boost para Novos Usuários (sem rating)
+            // 1. Score de Distância (Haversine)
+            let distanceScore = 0.5; // Neutro por padrão
+            if (request.latitude && request.longitude && res.provider_lat && res.provider_long) {
+                const dist = this.calculateDistance(
+                    request.latitude,
+                    request.longitude,
+                    res.provider_lat,
+                    res.provider_long
+                );
+                // Score: 1.0 se < 1km, decai até 0 em 50km
+                distanceScore = Math.max(0, 1 - (dist / 50000));
+            }
+
+            // 2. Score de Reputação (Boost para Novos)
             let reputationScore = 0;
             if (res.provider_rating === null || res.provider_rating === undefined) {
                 reputationScore = 0.7; // Começa com uma nota "boa" para ter chance
@@ -89,5 +99,20 @@ export class Matcher {
         }
 
         return matches;
+    }
+
+    private static calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        const R = 6371e3; // Raio da Terra em metros
+        const φ1 = lat1 * Math.PI / 180;
+        const φ2 = lat2 * Math.PI / 180;
+        const Δφ = (lat2 - lat1) * Math.PI / 180;
+        const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
     }
 }

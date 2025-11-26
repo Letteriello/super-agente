@@ -25,14 +25,11 @@ export class Alert {
     @Column("decimal", { precision: 10, scale: 2, nullable: true })
     reward: number;
 
-    @Index({ spatial: true })
-    @Column({
-        type: "geography",
-        spatialFeatureType: "Point",
-        srid: 4326,
-        nullable: true
-    })
-    location: any;
+    @Column({ nullable: true, type: "float" })
+    latitude: number;
+
+    @Column({ nullable: true, type: "float" })
+    longitude: number;
 
     @Column({ default: 1000 })
     radius_meters: number;

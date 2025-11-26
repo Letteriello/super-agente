@@ -17,7 +17,8 @@ async function runSimulation() {
         user = userRepo.create({
             phone: "554799999999",
             name: "Tester Silva",
-            location: { type: "Point", coordinates: [-48.63, -26.76] }
+            latitude: -26.76,
+            longitude: -48.63
         });
         await userRepo.save(user);
     }
