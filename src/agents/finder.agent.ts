@@ -13,51 +13,38 @@ export class FinderAgent implements IAgent {
         } else if (analysis.intent === "REPORT_FOUND_ITEM") {
             return this.handleFound(user, message, analysis);
         }
-        import { IAgent, AgentResponse } from "./base.agent";
-        import { User } from "../database/entities/User";
-        import { aiService } from "../services/ai.service";
-        import { AlertService } from "../services/alert.service";
+        return { text: "Não entendi se você perdeu ou achou algo." };
+    }
 
-        export class FinderAgent implements IAgent {
-            name = "Finder Agent";
-            description = "Gerencia itens perdidos e achados.";
+    private async handleLost(user: User, message: string, analysis: any): Promise<AgentResponse> {
+        const lostEmbedding = await aiService.generateEmbedding(analysis.entities.item || message);
 
-            async execute(user: User, message: string, analysis: any, context?: string): Promise<AgentResponse> {
-                if (analysis.intent === "REPORT_LOST_ITEM") {
-                    return this.handleLost(user, message, analysis);
-                } else if (analysis.intent === "REPORT_FOUND_ITEM") {
-                    return this.handleFound(user, message, analysis);
-                }
-                return { text: "Não entendi se você perdeu ou achou algo." };
-            }
+        await AlertService.createAlert({
+            type: "LOST",
+            description: message,
+            embedding: lostEmbedding,
+            reward: analysis.entities.reward,
+            radius_meters: 1000,
+            latitude: user.latitude,
+            longitude: user.longitude,
+            active: true
+        }, user);
 
-            private async handleLost(user: User, message: string, analysis: any): Promise<AgentResponse> {
-                const lostEmbedding = await aiService.generateEmbedding(analysis.entities.item || message);
+        return { text: analysis.reply_suggestion || "Alerta criado! Vou avisar seus vizinhos." };
+    }
 
-                await AlertService.createAlert({
-                    type: "LOST",
-                    description: message,
-                    embedding: lostEmbedding,
-                    reward: analysis.entities.reward,
-                    radius_meters: 1000,
-                    latitude: user.latitude, // Assuming user object has latitude
-                    longitude: user.longitude // Assuming user object has longitude
-                }, user);
+    private async handleFound(user: User, message: string, analysis: any): Promise<AgentResponse> {
+        const foundEmbedding = await aiService.generateEmbedding(analysis.entities.item || message);
 
-                return { text: analysis.reply_suggestion || "Alerta criado! Vou avisar seus vizinhos." };
-            }
+        await AlertService.createAlert({
+            type: "FOUND",
+            description: message,
+            embedding: foundEmbedding,
+            latitude: user.latitude,
+            longitude: user.longitude,
+            active: true
+        }, user);
 
-            private async handleFound(user: User, message: string, analysis: any): Promise<AgentResponse> {
-                const foundEmbedding = await aiService.generateEmbedding(analysis.entities.item || message);
-
-                await AlertService.createAlert({
-                    type: "FOUND",
-                    description: message,
-                    embedding: foundEmbedding,
-                    latitude: user.latitude, // Assuming user object has latitude
-                    longitude: user.longitude // Assuming user object has longitude
-                }, user);
-
-                return { text: analysis.reply_suggestion || "Obrigado! Vou procurar quem perdeu." };
-            }
-        }
+        return { text: analysis.reply_suggestion || "Obrigado! Vou procurar quem perdeu." };
+    }
+}
